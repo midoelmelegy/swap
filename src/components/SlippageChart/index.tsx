@@ -4,7 +4,7 @@ import { LineChart } from 'echarts/charts';
 import { DataZoomComponent, GraphicComponent, GridComponent, TooltipComponent } from 'echarts/components';
 import { useCallback, useEffect, useMemo } from 'react';
 import { uniqueId } from 'lodash';
-import logo from '~/public/defillama-light-neutral.png';
+import logo from '~/public/seaport-desktop.png';
 
 echarts.use([SVGRenderer, LineChart, GridComponent, TooltipComponent, GraphicComponent, DataZoomComponent]);
 
