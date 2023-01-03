@@ -651,7 +651,7 @@ export function AggregatorContainer({ tokenlist }) {
 
 	return (
 		<Wrapper>
-			<Heading>Meta-Aggregator</Heading>
+			<Heading>SeaPort Swap</Heading>
 
 			<Text fontSize="1rem" fontWeight="500">
 				This product is still in beta. If you run into any issue please let us know in our{' '}
