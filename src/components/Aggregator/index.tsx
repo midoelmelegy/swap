@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useAccount, useBalance, useFeeData, useNetwork, useSigner, useSwitchNetwork, useToken } from 'wagmi';
 import { useAddRecentTransaction } from '@rainbow-me/rainbowkit';
+import { MdOutlineAccountBalanceWallet } from 'react-icons/md';
 import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
 import { ArrowRight } from 'react-feather';
@@ -756,9 +757,9 @@ export function AggregatorContainer({ tokenlist }) {
 					</div>
 					<SwapWrapper>
 						{!isConnected ? (
-							// <Button colorScheme={'messenger'} onClick={() => openConnectModal()}>
-							// 	Connect Wallet
-							// </Button>
+							<Button colorScheme={'messenger'} onClick={() => openConnectModal()}>
+							<MdOutlineAccountBalanceWallet className={`h-[32px] w-[32px]`} /> Connect Wallet
+							</Button>
 							<></>
 						) : !isValidSelectedChain ? (
 							<Button colorScheme={'messenger'} onClick={() => switchNetwork(selectedChain.id)}>
