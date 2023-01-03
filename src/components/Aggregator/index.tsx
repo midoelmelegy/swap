@@ -2,7 +2,6 @@ import { useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useAccount, useBalance, useFeeData, useNetwork, useSigner, useSwitchNetwork, useToken } from 'wagmi';
 import { useAddRecentTransaction } from '@rainbow-me/rainbowkit';
-import { MdOutlineAccountBalanceWallet } from 'react-icons/md';
 import { ethers } from 'ethers';
 import BigNumber from 'bignumber.js';
 import { ArrowRight } from 'react-feather';
