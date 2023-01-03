@@ -757,7 +757,7 @@ export function AggregatorContainer({ tokenlist }) {
 					<SwapWrapper>
 						{!isConnected ? (
 							// <Button colorScheme={'messenger'} onClick={() => openConnectModal()}>
-							// <MdOutlineAccountBalanceWallet className={`h-[32px] w-[32px]`} /> Connect Wallet
+							// <img src="~/public/wallet.svg" alt="Wallet Icon" /> Connect Wallet
 							// </Button>
 							<></>
 						) : !isValidSelectedChain ? (
