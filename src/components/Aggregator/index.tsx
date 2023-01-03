@@ -667,7 +667,7 @@ export function AggregatorContainer({ tokenlist }) {
 							<Flex>
 								<Box>Chain</Box>
 								<Spacer />
-								<Tooltip content="Redirect requests through the DefiLlama Server to hide your IP address">
+								<Tooltip content="Redirect requests through the SeaPort Server to hide your IP address">
 									<FormControl display="flex" justifyContent={'center'}>
 										<FormLabel htmlFor="privacy-switch" pb="0" lineHeight={1}>
 											Private mode

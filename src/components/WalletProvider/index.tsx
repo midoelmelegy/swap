@@ -38,7 +38,7 @@ const Provider = styled.div`
 `;
 
 const { connectors } = getDefaultWallets({
-	appName: 'DefiLlama',
+	appName: 'SeaPort',
 	chains
 });
 
