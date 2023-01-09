@@ -17,7 +17,7 @@ import { allChains } from '../WalletProvider/chains';
 import { chainNamesReplaced, chainsMap } from './constants';
 // import * as krystal from './adapters/krystal'
 
-export const adapters = [matcha, inch, cowswap, kyberswap, openocean, yieldyak];
+export const adapters = [matcha, inch, cowswap, kyberswap, openocean, yieldyak, paraswap];
 
 const adaptersMap = adapters.reduce((acc, adapter) => ({ ...acc, [adapter.name]: adapter }), {});
 
@@ -31,6 +31,7 @@ export function getAllChains() {
 	const chainsOptions = chainsArr.map((c) => ({
 		value: c,
 		label: chainNamesReplaced[c] ?? capitalizeFirstLetter(c),
+		chainId: chainsMap[c],
 		logoURI: allChains.find(({ id }) => id === chainsMap[c])?.iconUrl
 	}));
 
@@ -39,6 +40,7 @@ export function getAllChains() {
 
 export async function swap({ chain, from, to, amount, signer, slippage = '1', adapter, rawQuote, tokens }) {
 	const aggregator = adaptersMap[adapter];
+
 	try {
 		const res = await aggregator.swap({
 			chain,

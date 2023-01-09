@@ -66,9 +66,16 @@ export async function getTokenList() {
 			...t,
 			label: t.symbol,
 			value: t.address,
-			geckoId: geckoList.find((geckoCoin) => geckoCoin.symbol === t.symbol.toLowerCase())?.id ?? null
+			geckoId: geckoList
+				? geckoList?.find((geckoCoin) => geckoCoin.symbol === t.symbol?.toLowerCase())?.id ?? null
+				: null
 		}));
 	}
+
+	tokenlist[66][0].logoURI = tokenlist[66][1].logoURI;
+	tokenlist[43114].find(
+		({ address }) => address.toLowerCase() === '0x152b9d0fdc40c096757f570a51e494bd4b943e50'
+	).symbol = 'BTC.b';
 
 	return {
 		props: {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useAccount, useBalance, useFeeData, useNetwork, useSigner, useSwitchNetwork, useToken } from 'wagmi';
 import { useAddRecentTransaction } from '@rainbow-me/rainbowkit';
@@ -26,9 +26,8 @@ import ReactSelect from '~/components/MultiSelect';
 import FAQs from '~/components/FAQs';
 import Route from '~/components/SwapRoute';
 import { getAllChains, swap } from './router';
-import { Input, TokenInput } from './TokenInput';
+import { TokenInput } from './TokenInput';
 import Loader from './Loader';
-import Search from './Search';
 import { useTokenApprove } from './hooks';
 import { useGetRoutes } from '~/queries/useGetRoutes';
 import { useGetPrice } from '~/queries/useGetPrice';
@@ -40,8 +39,9 @@ import Tooltip from '../Tooltip';
 import type { IToken } from '~/types';
 import { sendSwapEvent } from './adapters/utils';
 import { useRouter } from 'next/router';
-import { CloseBtn } from '../CloseBtn';
 import { TransactionModal } from '../TransactionModal';
+import { median } from '~/utils';
+import RoutesPreview from './RoutesPreview';
 
 /*
 Integrated:
@@ -94,10 +94,10 @@ cant integrate:
 */
 
 const Body = styled.div<{ showRoutes: boolean }>`
-	display: grid;
-	grid-row-gap: 16px;
-	padding-bottom: 4px;
-
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px;
 	width: 100%;
 	max-width: 30rem;
 
@@ -105,25 +105,14 @@ const Body = styled.div<{ showRoutes: boolean }>`
 		theme.mode === 'dark'
 			? '10px 0px 50px 10px rgba(26, 26, 26, 0.9);'
 			: '10px 0px 50px 10px rgba(211, 211, 211, 0.9);;'};
-	padding: 16px;
+
 	border-radius: 16px;
 	text-align: left;
-	transition: all 0.66s ease-out;
-	animation: ${(props) =>
-		props.showRoutes === true ? 'slide-left 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both' : 'none'};
-
-	@keyframes slide-left {
-		0% {
-			transform: translateX(180px);
-		}
-		100% {
-			transform: translateX(0);
-		}
-	}
 `;
 
 const Wrapper = styled.div`
 	width: 100%;
+	height: 100%;
 	text-align: center;
 	display: grid;
 	grid-row-gap: 36px;
@@ -140,23 +129,21 @@ const Wrapper = styled.div`
 	}
 `;
 
-const Balance = styled.div`
-	text-align: right;
-	padding-right: 4px;
-	text-decoration: underline;
-	margin-top: 4px;
-	cursor: pointer;
-`;
-
 const Routes = styled.div`
+	display: flex;
+	flex-direction: column;
 	padding: 16px;
 	border-radius: 16px;
 	text-align: left;
 	overflow-y: scroll;
 	min-width: 360px;
-	max-height: 482px;
+	height: 100%;
+	max-height: 480px;
 	min-width: 26rem;
-	animation: tilt-in-fwd-in 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+
+	& > *:first-child {
+		margin-bottom: -6px;
+	}
 
 	box-shadow: ${({ theme }) =>
 		theme.mode === 'dark'
@@ -169,28 +156,6 @@ const Routes = styled.div`
 
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
-
-	@keyframes tilt-in-fwd-in {
-		0% {
-			transform: rotateY(-20deg) rotateX(35deg) translate(-300px, -300px) skew(35deg, -10deg);
-			opacity: 0;
-		}
-		100% {
-			transform: rotateY(0) rotateX(0deg) translate(0, 0) skew(0deg, 0deg);
-			opacity: 1;
-		}
-	}
-
-	@keyframes tilt-in-fwd-out {
-		0% {
-			transform: rotateY(-20deg) rotateX(35deg) translate(-1000px, -1000px) skew(35deg, -10deg);
-			opacity: 0;
-		}
-		100% {
-			transform: rotateY(0) rotateX(0deg) translate(0, 0) skew(0deg, 0deg);
-			opacity: 1;
-		}
-	}
 `;
 
 const BodyWrapper = styled.div`
@@ -207,8 +172,6 @@ const BodyWrapper = styled.div`
 const TokenSelectBody = styled.div`
 	display: grid;
 	grid-column-gap: 8px;
-	margin-top: 16px;
-	margin-bottom: 8px;
 	grid-template-columns: 5fr 1fr 5fr;
 `;
 
@@ -216,28 +179,28 @@ const FormHeader = styled.div`
 	font-weight: bold;
 	font-size: 16px;
 	margin-bottom: 4px;
-	padding-left: 4px;
+	margin-left: 4px;
 `;
 
 const SelectWrapper = styled.div`
 	border: ${({ theme }) => (theme.mode === 'dark' ? '2px solid #373944;' : '2px solid #c6cae0;')};
 	border-radius: 16px;
-	padding: 8px;
-	padding-bottom: 16px;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
 `;
 
 const SwapWrapper = styled.div`
+	margin-top: auto;
+	min-height: 40px;
 	width: 100%;
 	display: flex;
-	& > button {
-		width: 100%;
-		margin-right: 4px;
-	}
-`;
+	gap: 4px;
+	flex-wrap: wrap;
 
-const InputFooter = styled.div`
-	display: flex;
-	justify-content: space-between;
+	& > button {
+		flex: 1;
+	}
 `;
 
 const chains = getAllChains();
@@ -247,12 +210,14 @@ export function AggregatorContainer({ tokenlist }) {
 	const { address, isConnected } = useAccount();
 	const { chain: chainOnWallet } = useNetwork();
 
+	const [route, setRoute] = useState(null);
+
 	const [isPrivacyEnabled, setIsPrivacyEnabled] = useState(false);
 	const toast = useToast();
-	const savedTokens = getSavedTokens();
+
 	const { data: tokenBalances } = useTokenBalances(address);
 
-	const [slippage, setSlippage] = useState('1');
+	const [customSlippage, setCustomSlippage] = useState<string | number>('');
 
 	const addRecentTransaction = useAddRecentTransaction();
 
@@ -260,24 +225,21 @@ export function AggregatorContainer({ tokenlist }) {
 
 	const router = useRouter();
 
-	const { chain: chainOnURL, from: fromToken, to: toToken } = router.query;
+	const { chain: chainOnURL, from: fromToken, to: toToken, slippage: slippageQuery } = router.query;
 
 	const chainName = typeof chainOnURL === 'string' ? chainOnURL.toLowerCase() : 'ethereum';
-	const fromTokenSymbol = typeof fromToken === 'string' ? fromToken.toLowerCase() : null;
-	const toTokenSymbol = typeof toToken === 'string' ? toToken.toLowerCase() : null;
+	const fromTokenAddress = typeof fromToken === 'string' ? fromToken.toLowerCase() : null;
+	const toTokenAddress = typeof toToken === 'string' ? toToken.toLowerCase() : null;
+	const slippage = typeof slippageQuery === 'string' && !Number.isNaN(Number(slippageQuery)) ? slippageQuery : '0.1';
 
 	const { selectedChain, selectedFromToken, selectedToToken, chainTokenList } = useMemo(() => {
 		const tokenList: Array<IToken> = tokenlist && chainName ? tokenlist[chainsMap[chainName]] || [] : null;
 
 		const selectedChain = chains.find((c) => c.value === chainName);
 
-		const selectedFromToken = tokenList?.find(
-			(t) => t.symbol.toLowerCase() === fromTokenSymbol || t.address.toLowerCase() === fromTokenSymbol
-		);
+		const selectedFromToken = tokenList?.find((t) => t.address.toLowerCase() === fromTokenAddress);
 
-		const selectedToToken = tokenList?.find(
-			(t) => t.symbol.toLowerCase() === toTokenSymbol || t.address.toLowerCase() === toTokenSymbol
-		);
+		const selectedToToken = tokenList?.find((t) => t.address.toLowerCase() === toTokenAddress);
 
 		return {
 			selectedChain: selectedChain ? { ...selectedChain, id: chainsMap[selectedChain.value] } : null,
@@ -289,7 +251,7 @@ export function AggregatorContainer({ tokenlist }) {
 				: null,
 			chainTokenList: tokenList
 		};
-	}, [chainName, fromTokenSymbol, toTokenSymbol, tokenlist]);
+	}, [chainName, fromTokenAddress, toTokenAddress, tokenlist]);
 
 	const { data: fromToken2 } = useToken({
 		address: fromToken as `0x${string}`,
@@ -337,7 +299,7 @@ export function AggregatorContainer({ tokenlist }) {
 	const [txModalOpen, setTxModalOpen] = useState(false);
 	const [txUrl, setTxUrl] = useState('');
 
-	const amountWithDecimals = BigNumber(amount)
+	const amountWithDecimals = BigNumber(amount && amount !== '' ? amount : '0')
 		.times(BigNumber(10).pow(finalSelectedFromToken?.decimals || 18))
 		.toFixed(0);
 
@@ -351,7 +313,8 @@ export function AggregatorContainer({ tokenlist }) {
 			? undefined
 			: (finalSelectedFromToken?.address as `0x${string}`),
 		watch: true,
-		enabled: isValidSelectedChain
+		chainId: selectedChain.id,
+		enabled: selectedChain && isConnected
 	});
 
 	const { data: gasPriceData } = useFeeData({
@@ -359,17 +322,24 @@ export function AggregatorContainer({ tokenlist }) {
 		enabled: selectedChain ? true : false
 	});
 
-	const tokensInChain =
-		chainTokenList
-			?.concat(savedTokens[chainOnWallet?.id] || [])
-			.map((token) => ({
-				...token,
-				amount: tokenBalances?.[chainOnWallet?.id]?.[token.address.toLowerCase()]?.amount || 0,
-				balanceUSD: tokenBalances?.[chainOnWallet?.id]?.[token.address.toLowerCase()]?.balanceUSD || 0
-			}))
-			.sort((a, b) => b.balanceUSD - a.balanceUSD) ?? [];
+	const tokensInChain = useMemo(() => {
+		const savedTokens = getSavedTokens();
 
-	const [route, setRoute] = useState(null);
+		return (
+			chainTokenList
+				?.concat(savedTokens[selectedChain?.id] || [])
+				.map((token) => ({
+					...token,
+					amount:
+						tokenBalances?.[selectedChain?.id]?.find((t) => t.address.toLowerCase() === token.address.toLowerCase())
+							?.amount ?? 0,
+					balanceUSD:
+						tokenBalances?.[selectedChain?.id]?.find((t) => t.address.toLowerCase() === token.address.toLowerCase())
+							?.balanceUSD ?? 0
+				}))
+				.sort((a, b) => b.balanceUSD - a.balanceUSD) ?? []
+		);
+	}, [chainTokenList, selectedChain?.id, tokenBalances]);
 
 	const confirmingTxToastRef = useRef<ToastId>();
 
@@ -409,7 +379,7 @@ export function AggregatorContainer({ tokenlist }) {
 				isClosable: true,
 				position: 'top-right'
 			});
-
+			let isError = false;
 			data
 				.wait?.()
 				?.then((final) => {
@@ -449,6 +419,7 @@ export function AggregatorContainer({ tokenlist }) {
 							}
 						});
 					} else {
+						isError = true;
 						toast({
 							title: 'Transaction Failed',
 							status: 'error',
@@ -463,6 +434,7 @@ export function AggregatorContainer({ tokenlist }) {
 					}
 				})
 				.catch(() => {
+					isError = true;
 					toast({
 						title: 'Transaction Failed',
 						status: 'error',
@@ -474,21 +446,22 @@ export function AggregatorContainer({ tokenlist }) {
 							maxWidth: '300px'
 						}
 					});
+				})
+				?.finally(() => {
+					sendSwapEvent({
+						chain: selectedChain.value,
+						user: address,
+						from: variables.from,
+						to: variables.to,
+						aggregator: variables.adapter,
+						isError,
+						quote: variables.rawQuote,
+						txUrl,
+						amount: String(amount),
+						errorData: {},
+						amountUsd: +fromTokenPrice * +amount || 0
+					});
 				});
-
-			sendSwapEvent({
-				chain: selectedChain.value,
-				user: address,
-				from: variables.from,
-				to: variables.to,
-				aggregator: variables.adapter,
-				isError: false,
-				quote: variables.rawQuote,
-				txUrl,
-				amount: String(amount),
-				errorData: {},
-				amountUsd: +fromTokenPrice * +amount || 0
-			});
 		},
 		onError: (err: { reason: string; code: string }, variables) => {
 			if (err.code !== 'ACTION_REJECTED' || err.code.toString() === '-32603') {
@@ -560,22 +533,34 @@ export function AggregatorContainer({ tokenlist }) {
 		fromToken: finalSelectedFromToken?.address
 	});
 
-	const { gasTokenPrice = 0, toTokenPrice = 0, fromTokenPrice = 0 } = tokenPrices || {};
+	const { gasTokenPrice = 0, toTokenPrice, fromTokenPrice } = tokenPrices || {};
 
 	const {
 		isApproved,
 		approve,
 		approveInfinite,
+		approveReset,
 		isLoading: isApproveLoading,
-		isInfiniteLoading: isApproveInfiniteLoading
+		isInfiniteLoading: isApproveInfiniteLoading,
+		isResetLoading: isApproveResetLoading,
+		isConfirmingApproval,
+		isConfirmingInfiniteApproval,
+		isConfirmingResetApproval,
+		shouldRemoveApproval,
+		allowance
 	} = useTokenApprove(finalSelectedFromToken?.address, route?.price?.tokenApprovalAddress, amountWithDecimals);
 
 	const onMaxClick = () => {
 		if (balance?.data?.formatted) {
-			if (route && finalSelectedFromToken?.address === ethers.constants.AddressZero) {
+			if (
+				route?.price?.estimatedGas &&
+				gasPriceData?.formatted?.gasPrice &&
+				finalSelectedFromToken?.address === ethers.constants.AddressZero
+			) {
 				const gas = (+route.price.estimatedGas * +gasPriceData?.formatted?.gasPrice * 2) / 1e18;
 
 				const amountWithoutGas = +balance?.data?.formatted - gas;
+
 				setAmount(amountWithoutGas);
 			} else {
 				setAmount(balance?.data?.formatted);
@@ -584,30 +569,28 @@ export function AggregatorContainer({ tokenlist }) {
 	};
 
 	const onChainChange = (newChain) => {
-		router.push({ pathname: '/', query: { chain: newChain.value } }, undefined, { shallow: true });
+		setRoute(null);
+		router.push({ pathname: '/', query: { chain: newChain.value } }, undefined, { shallow: true }).then(() => {
+			if (switchNetwork) switchNetwork(newChain.chainId);
+		});
 	};
 
 	const onFromTokenChange = (token) => {
-		router.push(
-			{ pathname: router.pathname, query: { ...router.query, from: token.symbol || token.address } },
-			undefined,
-			{
-				shallow: true
-			}
-		);
+		setRoute(null);
+		router.push({ pathname: router.pathname, query: { ...router.query, from: token.address } }, undefined, {
+			shallow: true
+		});
 	};
 
 	const onToTokenChange = (token) => {
-		router.push(
-			{ pathname: router.pathname, query: { ...router.query, to: token.symbol || token.address } },
-			undefined,
-			{
-				shallow: true
-			}
-		);
+		setRoute(null);
+		router.push({ pathname: router.pathname, query: { ...router.query, to: token.address } }, undefined, {
+			shallow: true
+		});
 	};
 
 	const setTokens = (tokens) => {
+		setRoute(null);
 		router.push(
 			{ pathname: router.pathname, query: { ...router.query, from: tokens.token0.symbol, to: tokens.token1.symbol } },
 			undefined,
@@ -629,10 +612,14 @@ export function AggregatorContainer({ tokenlist }) {
 					: gasUsd;
 
 			gasUsd = route.l1Gas !== 'Unknown' && route.l1Gas ? route.l1Gas * gasTokenPrice + gasUsd : gasUsd;
+
 			gasUsd = route.l1Gas === 'Unknown' ? 'Unknown' : gasUsd;
+
 			const amount = +route.price.amountReturned / 10 ** +finalSelectedToToken?.decimals;
-			const amountUsd = (amount * toTokenPrice).toFixed(2);
-			const netOut = route.l1Gas !== 'Unknown' ? +amountUsd - +gasUsd : +amountUsd;
+
+			const amountUsd = toTokenPrice ? (amount * toTokenPrice).toFixed(2) : null;
+
+			const netOut = amountUsd ? (route.l1Gas !== 'Unknown' ? +amountUsd - +gasUsd : +amountUsd) : amount;
 
 			return { route, gasUsd, amountUsd, amount, netOut, ...route };
 		})
@@ -644,18 +631,37 @@ export function AggregatorContainer({ tokenlist }) {
 		.filter((r) => r.gasUsd !== 'Unknown')
 		.concat(normalizedRoutes.filter((r) => r.gasUsd === 'Unknown'));
 
+	const medianAmount = median(normalizedRoutes.map(({ amount }) => amount));
+
+	normalizedRoutes = normalizedRoutes.filter(({ amount }) => amount < medianAmount * 3);
+
 	const priceImpact =
-		fromTokenPrice && route?.route?.amountUsd > 0
+		fromTokenPrice && toTokenPrice && route?.route?.amountUsd > 0
 			? 100 - (route?.route?.amountUsd / (+fromTokenPrice * +amount)) * 100
 			: 0;
 
+	const isUSDTNotApprovedOnEthereum =
+		selectedChain && finalSelectedFromToken && selectedChain.id === 1 && shouldRemoveApproval;
+
+	useEffect(() => {
+		const id = setTimeout(() => {
+			if (customSlippage && !Number.isNaN(customSlippage) && slippage !== customSlippage) {
+				router.push({ pathname: '/', query: { ...router.query, slippage: customSlippage } }, undefined, {
+					shallow: true
+				});
+			}
+		}, 300);
+
+		return () => clearTimeout(id);
+	}, [slippage, customSlippage, router]);
+
 	return (
 		<Wrapper>
-			<Heading>SeaPort Swap</Heading>
+			<Heading>Meta-Aggregator</Heading>
 
 			<Text fontSize="1rem" fontWeight="500">
 				This product is still in beta. If you run into any issue please let us know in our{' '}
-				<a style={{ textDecoration: 'underline' }} href="https://discord.gg/mXaqx6SnjP">
+				<a style={{ textDecoration: 'underline' }} href="https://discord.gg/j54NuUt5nW">
 					discord server
 				</a>
 			</Text>
@@ -667,9 +673,9 @@ export function AggregatorContainer({ tokenlist }) {
 							<Flex>
 								<Box>Chain</Box>
 								<Spacer />
-								<Tooltip content="Redirect requests through the SeaPort Server to hide your IP address">
-									<FormControl display="flex" justifyContent={'center'}>
-										<FormLabel htmlFor="privacy-switch" pb="0" lineHeight={1}>
+								<Tooltip content="Redirect requests through the DefiLlama Server to hide your IP address">
+									<FormControl display="flex" alignItems="center" gap="4px" justifyContent={'center'}>
+										<FormLabel htmlFor="privacy-switch" margin={0}>
 											Private mode
 										</FormLabel>
 										<Switch
@@ -687,7 +693,12 @@ export function AggregatorContainer({ tokenlist }) {
 					<SelectWrapper>
 						<FormHeader>Select Tokens</FormHeader>
 						<TokenSelectBody>
-							<TokenSelect tokens={chainTokenList} token={finalSelectedFromToken} onClick={onFromTokenChange} />
+							<TokenSelect
+								tokens={tokensInChain}
+								token={finalSelectedFromToken}
+								onClick={onFromTokenChange}
+								selectedChain={selectedChain}
+							/>
 
 							<IconButton
 								onClick={() =>
@@ -701,12 +712,17 @@ export function AggregatorContainer({ tokenlist }) {
 									)
 								}
 								bg="none"
-								icon={<ArrowRight />}
+								icon={<ArrowRight size={16} />}
 								aria-label="Switch Tokens"
 								marginTop="auto"
 							/>
 
-							<TokenSelect tokens={chainTokenList} token={finalSelectedToToken} onClick={onToTokenChange} />
+							<TokenSelect
+								tokens={tokensInChain}
+								token={finalSelectedToToken}
+								onClick={onToTokenChange}
+								selectedChain={selectedChain}
+							/>
 						</TokenSelectBody>
 
 						{/* <Text textAlign="center" margin="8px 16px">
@@ -719,45 +735,125 @@ export function AggregatorContainer({ tokenlist }) {
 					<div>
 						<FormHeader>Amount In</FormHeader>
 						<TokenInput setAmount={setAmount} amount={amount} onMaxClick={onMaxClick} />
-						<InputFooter>
-							<div style={{ marginTop: 4, marginLeft: 4 }}>
-								Slippage %{' '}
-								<Input
-									value={slippage}
-									type="number"
-									style={{
-										width: 55,
-										height: 30,
-										display: 'inline',
-										appearance: 'textfield'
-									}}
-									onChange={(val) => {
-										if (+val.target.value < 50) setSlippage(val.target.value);
-									}}
-								/>{' '}
-								{fromTokenPrice ? (
-									<>
-										Value: $
-										{(+fromTokenPrice * +amount).toLocaleString(undefined, {
+
+						<Flex flexDir="column" gap="16px" marginBottom="16px">
+							<Flex alignItems="center" justifyContent="space-between" marginX="4px" marginTop="8px">
+								<Text>
+									{fromTokenPrice
+										? `Value: $
+										${(+fromTokenPrice * +amount).toLocaleString(undefined, {
+											maximumFractionDigits: 3
+										})}`
+										: ''}
+								</Text>
+
+								{balance.isSuccess ? (
+									<Button
+										textDecor="underline"
+										bg="none"
+										p={0}
+										fontWeight="400"
+										fontSize="0.875rem"
+										ml="auto"
+										height="fit-content"
+										onClick={onMaxClick}
+									>
+										Balance:{' '}
+										{(+balance?.data?.formatted).toLocaleString(undefined, {
 											maximumFractionDigits: 3
 										})}
-									</>
+									</Button>
 								) : null}
-							</div>
-							{balance.isSuccess ? (
-								<Balance onClick={onMaxClick}>
-									Balance:{' '}
-									{(+balance?.data?.formatted).toLocaleString(undefined, {
-										maximumFractionDigits: 3
-									})}
-								</Balance>
-							) : null}
-						</InputFooter>
+							</Flex>
+
+							<Box display="flex" flexDir="column" marginX="4px">
+								<Text
+									fontWeight="400"
+									display="flex"
+									justifyContent="space-between"
+									alignItems="center"
+									fontSize="0.875rem"
+								>
+									Swap Slippage: {slippage ? slippage + '%' : ''}
+								</Text>
+								<Box display="flex" gap="6px" flexWrap="wrap" width="100%">
+									<Button
+										fontSize="0.875rem"
+										fontWeight="500"
+										p="8px"
+										bg="#38393e"
+										height="2rem"
+										onClick={() => {
+											setCustomSlippage('');
+											router.push({ pathname: '/', query: { ...router.query, slippage: '0.1' } }, undefined, {
+												shallow: true
+											});
+										}}
+									>
+										0.1%
+									</Button>
+									<Button
+										fontSize="0.875rem"
+										fontWeight="500"
+										p="8px"
+										bg="#38393e"
+										height="2rem"
+										onClick={() => {
+											setCustomSlippage('');
+
+											router.push({ pathname: '/', query: { ...router.query, slippage: '0.5' } }, undefined, {
+												shallow: true
+											});
+										}}
+									>
+										0.5%
+									</Button>
+									<Button
+										fontSize="0.875rem"
+										fontWeight="500"
+										p="8px"
+										bg="#38393e"
+										height="2rem"
+										onClick={() => {
+											setCustomSlippage('');
+
+											router.push({ pathname: '/', query: { ...router.query, slippage: '1' } }, undefined, {
+												shallow: true
+											});
+										}}
+									>
+										1%
+									</Button>
+									<Box pos="relative" isolation="isolate">
+										<input
+											value={customSlippage}
+											type="number"
+											style={{
+												width: '100%',
+												height: '2rem',
+												padding: '4px 6px',
+												background: 'black',
+												marginLeft: 'auto',
+												borderRadius: '0.375rem',
+												fontSize: '0.875rem'
+											}}
+											placeholder="Custom"
+											onChange={(val) => {
+												setCustomSlippage(val.target.value);
+											}}
+										/>
+										<Text pos="absolute" top="6px" right="6px" fontSize="0.875rem" zIndex={1}>
+											%
+										</Text>
+									</Box>
+								</Box>
+							</Box>
+						</Flex>
 					</div>
 					<SwapWrapper>
 						{!isConnected ? (
 							// <Button colorScheme={'messenger'} onClick={() => openConnectModal()}>
-							// <img src="~/public/wallet.svg" alt="Wallet Icon" /> Connect Wallet
+							// 	Connect Wallet
 							// </Button>
 							<></>
 						) : !isValidSelectedChain ? (
@@ -766,33 +862,77 @@ export function AggregatorContainer({ tokenlist }) {
 							</Button>
 						) : (
 							<>
-								{route && address ? (
-									<Button
-										isLoading={swapMutation.isLoading || isApproveLoading}
-										loadingText="Preparing transaction"
-										colorScheme={'messenger'}
-										onClick={() => {
-											if (approve) approve();
+								{router && address && (
+									<>
+										<>
+											{isUSDTNotApprovedOnEthereum && (
+												<Flex flexDir="column" gap="4px" w="100%">
+													<Text fontSize="0.75rem" fontWeight={400}>
+														{`USDT uses an old token implementation that requires resetting approvals if there's a
+														previous approval, and you currently have an approval for ${(
+															Number(allowance) /
+															10 ** finalSelectedFromToken.decimals
+														).toFixed(2)} USDT for this contract, you
+														need to reset your approval and approve again`}
+													</Text>
+													<Button
+														isLoading={isApproveResetLoading}
+														loadingText={isConfirmingResetApproval ? 'Confirming' : 'Preparing transaction'}
+														colorScheme={'messenger'}
+														onClick={() => {
+															if (approveReset) approveReset();
+														}}
+														disabled={isApproveResetLoading}
+													>
+														Reset Approval
+													</Button>
+												</Flex>
+											)}
 
-											if (+amount > +balance?.data?.formatted) return;
-											if (isApproved) handleSwap();
-										}}
-									>
-										{isApproved ? 'Swap' : 'Approve'}
-									</Button>
-								) : null}
-								{route && address && !isApproved && ['Matcha/0x', '1inch', 'CowSwap'].includes(route?.name) ? (
-									<Button
-										colorScheme={'messenger'}
-										loadingText="Preparing transaction"
-										isLoading={isApproveInfiniteLoading}
-										onClick={() => {
-											if (approveInfinite) approveInfinite();
-										}}
-									>
-										{'Approve Infinite'}
-									</Button>
-								) : null}
+											<Button
+												isLoading={swapMutation.isLoading || isApproveLoading}
+												loadingText={isConfirmingApproval ? 'Confirming' : 'Preparing transaction'}
+												colorScheme={'messenger'}
+												onClick={() => {
+													if (approve) approve();
+
+													if (+amount > +balance?.data?.formatted) return;
+
+													if (isApproved) handleSwap();
+												}}
+												disabled={
+													isUSDTNotApprovedOnEthereum ||
+													swapMutation.isLoading ||
+													isApproveLoading ||
+													isApproveResetLoading ||
+													!route
+												}
+											>
+												{!route ? 'Select Aggregator' : isApproved ? 'Swap' : 'Approve'}
+											</Button>
+
+											{!isApproved && ['Matcha/0x', '1inch', 'CowSwap'].includes(route?.name) && (
+												<Button
+													colorScheme={'messenger'}
+													loadingText={isConfirmingInfiniteApproval ? 'Confirming' : 'Preparing transaction'}
+													isLoading={isApproveInfiniteLoading}
+													onClick={() => {
+														if (approveInfinite) approveInfinite();
+													}}
+													disabled={
+														isUSDTNotApprovedOnEthereum ||
+														swapMutation.isLoading ||
+														isApproveLoading ||
+														isApproveResetLoading ||
+														isApproveInfiniteLoading
+													}
+												>
+													{'Approve Infinite'}
+												</Button>
+											)}
+										</>
+									</>
+								)}
 							</>
 						)}
 					</SwapWrapper>
@@ -804,18 +944,11 @@ export function AggregatorContainer({ tokenlist }) {
 					) : null}
 				</Body>
 
-				{finalSelectedFromToken && finalSelectedToToken && (
+				{
 					<Routes>
-						<FormHeader>
-							Routes
-							<CloseBtn
-								right="4px"
-								top="6px"
-								onClick={() => router.push({ pathname: '/' }, undefined, { shallow: true })}
-							/>
-						</FormHeader>
+						{normalizedRoutes?.length ? <FormHeader>Routes</FormHeader> : null}
 
-						{isLoading ? <Loader loaded={!isLoading} /> : null}
+						{isLoading ? <Loader loaded={!isLoading} /> : normalizedRoutes?.length ? null : <RoutesPreview />}
 
 						{normalizedRoutes.map((r, i) => (
 							<Route
@@ -833,13 +966,13 @@ export function AggregatorContainer({ tokenlist }) {
 									finalSelectedFromToken.label +
 									finalSelectedToToken.label +
 									amountWithDecimals +
-									gasPriceData.formatted.gasPrice +
-									r.name
+									gasPriceData?.formatted?.gasPrice +
+									r?.name
 								}
 							/>
 						))}
 					</Routes>
-				)}
+				}
 			</BodyWrapper>
 
 			<FAQs />

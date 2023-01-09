@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { Input } from './TokenInput';
 import styled from 'styled-components';
-import { TYPE } from '~/Theme';
 import { CloseBtn } from '../CloseBtn';
+import { Text } from '@chakra-ui/react';
 
 interface Props {
 	tokens: Array<{ symbol: string; address: string }>;
@@ -57,7 +57,7 @@ export const Header = styled.div`
 
 export const PairRow = styled.div<{ hover?: boolean }>`
 	display: flex;
-	grid-row-gap: 8px;
+	gap: 8px;
 	margin-top: 16px;
 	border-bottom: ${({ theme }) => (theme.mode === 'dark' ? '1px solid #373944;' : '2px solid #c6cae0;')};
 	padding: 8px;
@@ -72,6 +72,8 @@ export const IconImage = styled.img`
 	border-radius: 50%;
 	width: 20px;
 	height: 20px;
+	aspect-ratio: 1;
+	flex-shrink: 0;
 `;
 export const IconWrapper = styled.div`
 	display: flex;
@@ -88,9 +90,12 @@ const Row = ({ data: { data, onClick }, index, style }) => {
 	return (
 		<PairRow key={pair.value} style={style} onClick={() => onClick(pair)}>
 			<IconWrapper>
-				<IconImage src={pair.token0.logoURI} /> - <IconImage src={pair.token1.logoURI} />
+				<IconImage src={pair.token0.logoURI} onError={(e) => (e.currentTarget.src = '/placeholder.png')} /> -{' '}
+				<IconImage src={pair.token1.logoURI} onError={(e) => (e.currentTarget.src = '/placeholder.png')} />
 			</IconWrapper>
-			<TYPE.heading>{pair.label}</TYPE.heading>
+			<Text whiteSpace="nowrap" textOverflow="ellipsis" overflow="hidden">
+				{pair.label}
+			</Text>
 		</PairRow>
 	);
 };
@@ -99,7 +104,9 @@ const Modal = ({ close, onInputChange, data, onClick }) => {
 	return (
 		<ModalWrapper>
 			<Header>
-				<TYPE.largeHeader fontSize={20}>Search</TYPE.largeHeader>
+				<Text fontWeight={500} color={'#FAFAFA'} fontSize={20}>
+					Search
+				</Text>
 				<CloseBtn onClick={close} />
 			</Header>
 			<div>
