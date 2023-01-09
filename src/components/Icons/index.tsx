@@ -300,4 +300,30 @@ const LlamaIcon = (
 	<img src="https://www.seaport.market/seaport.svg" alt="SeaPort"></img>
 );
 
+const SmolCheck = (
+	<svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+		<g clipPath="url(#clip0_1189_652)">
+			<path
+				d="M3.42822 6.85631L5.18537 8.26202C5.23256 8.30088 5.28781 8.32874 5.34712 8.34357C5.40643 8.35839 5.4683 8.35982 5.52822 8.34773C5.58872 8.33639 5.64607 8.31214 5.69636 8.27664C5.74665 8.24114 5.7887 8.19523 5.81965 8.14202L8.57108 3.42773"
+				stroke="#61A2FE"
+				strokeWidth="0.857143"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+			<path
+				d="M5.99965 11.5706C9.07667 11.5706 11.5711 9.07618 11.5711 5.99916C11.5711 2.92215 9.07667 0.427734 5.99965 0.427734C2.92264 0.427734 0.428223 2.92215 0.428223 5.99916C0.428223 9.07618 2.92264 11.5706 5.99965 11.5706Z"
+				stroke="#61A2FE"
+				strokeWidth="0.857143"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</g>
+		<defs>
+			<clipPath id="clip0_1189_652">
+				<rect width="12" height="12" fill="white" />
+			</clipPath>
+		</defs>
+	</svg>
+);
+
 export { GasIcon, CrossIcon, ArrowIcon, AggIcons, LlamaIcon, SmolCheck };
