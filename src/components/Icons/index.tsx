@@ -298,8 +298,6 @@ const AggIcons = [
 
 const LlamaIcon = (
 	<img src="https://www.seaport.market/seaport.svg" alt="SeaPort"></img>
-	<svg width={81} height={80} fill="none" xmlns="http://www.w3.org/2000/svg">
-	</svg>
 );
 
 export { GasIcon, CrossIcon, ArrowIcon, AggIcons, LlamaIcon, SmolCheck };
