@@ -2,7 +2,7 @@
 
 import BigNumber from 'bignumber.js';
 import { ethers } from 'ethers';
-import { defillamaReferrerAddress } from '../constants';
+import { seaportReferrerAddress } from '../constants';
 
 export const chainToId = {
 	ethereum: 1,
@@ -41,7 +41,7 @@ export async function getQuote(chain: string, from: string, to: string, amount: 
 		fetch(`https://api.1inch.io/v4.0/${chainToId[chain]}/approve/spender`).then((r) => r.json()),
 		extra.userAddress !== ethers.constants.AddressZero
 			? fetch(
-					`https://api.1inch.io/v4.0/${chainToId[chain]}/swap?fromTokenAddress=${tokenFrom}&toTokenAddress=${tokenTo}&amount=${amount}&fromAddress=${extra.userAddress}&slippage=${extra.slippage}&referrerAddress=${defillamaReferrerAddress}&disableEstimate=true`
+					`https://api.1inch.io/v4.0/${chainToId[chain]}/swap?fromTokenAddress=${tokenFrom}&toTokenAddress=${tokenTo}&amount=${amount}&fromAddress=${extra.userAddress}&slippage=${extra.slippage}&referrerAddress=${seaportReferrerAddress}&disableEstimate=true`
 			  ).then((r) => r.json())
 			: null
 	]);
