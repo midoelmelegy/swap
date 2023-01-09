@@ -657,11 +657,11 @@ export function AggregatorContainer({ tokenlist }) {
 
 	return (
 		<Wrapper>
-			<Heading>Meta-Aggregator</Heading>
+			<Heading>SeaPort-Aggregator</Heading>
 
 			<Text fontSize="1rem" fontWeight="500">
 				This product is still in beta. If you run into any issue please let us know in our{' '}
-				<a style={{ textDecoration: 'underline' }} href="https://discord.gg/j54NuUt5nW">
+				<a style={{ textDecoration: 'underline' }} href="https://discord.gg/mXaqx6SnjP">
 					discord server
 				</a>
 			</Text>
